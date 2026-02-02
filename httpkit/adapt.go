@@ -1,0 +1,34 @@
+package httpkit
+
+import (
+	"net/http"
+
+	apperrors "github.com/sejta/nope/errors"
+	jsonkit "github.com/sejta/nope/json"
+)
+
+// Adapt преобразует Handler в http.HandlerFunc.
+func Adapt(h Handler) http.HandlerFunc {
+	if h == nil {
+		panic("httpkit: nil handler")
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		res, err := h(r.Context(), r)
+		if err != nil {
+			apperrors.WriteError(w, r, err)
+			return
+		}
+
+		if resResult, ok := res.(result); ok {
+			status := resResult.status()
+			if status == http.StatusNoContent {
+				w.WriteHeader(status)
+				return
+			}
+			jsonkit.WriteJSON(w, status, resResult.payload())
+			return
+		}
+
+		jsonkit.WriteJSON(w, http.StatusOK, res)
+	}
+}
