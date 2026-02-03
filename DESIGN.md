@@ -29,7 +29,7 @@ nope **не** делает:
 
 ## 3. Киты (pillars)
 
-### 3.1 Errors — «ошибка как продукт»
+### 3.1 Errors + JSON — контракт ответа и входа
 Ошибки — контракт для клиента.
 
 **Единый JSON‑формат:**
@@ -54,6 +54,16 @@ nope **не** делает:
 - `AppError{ Status, Code, Message, Fields, Cause }`
 - helpers: `E(...)`, `Wrap(err)`, `WithField(...)`
 - `WriteError(w, r, err)`
+
+**DecodeJSON (строгий вход):**
+- лимит body (дефолт 1–2MB)
+- unknown fields → ошибка `unexpected_field` + `fields`
+- превышен лимит body → `body_too_large`
+- любой иной синтаксический сбой → `invalid_json`
+
+**WriteJSON:**
+- `Content-Type: application/json; charset=utf-8`
+- ошибки пишутся только через `WriteError`
 
 ---
 
@@ -108,31 +118,28 @@ func(ctx context.Context, r *http.Request) (any, error)
 ---
 
 ### 3.5 JSON — строгий in/out
-
-**DecodeJSON:**
-- лимит body (дефолт 1–2MB)
-- strict mode (unknown fields → ошибка)
-- коды: `invalid_json`, `body_too_large`, `unexpected_field`
-
-**WriteJSON:**
-- `Content-Type: application/json; charset=utf-8`
-- ошибки — только через `WriteError`
+См. раздел 3.1 (контракт ошибок и JSON).
 
 ---
 
 ### 3.6 App — runtime / bootstrap
 
 **API v0.1:**
-- `Run(addr string, h http.Handler, opts ...Option) error`
+- `Config`
+- `DefaultConfig()`
+- `Run(ctx, cfg, h)`
+- `WithHealth(h)`
+- `WithPprof(h)`
+
+**Config:**
+- `Addr`, `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`, `ShutdownTimeout`
 
 **Включено по умолчанию:**
 - graceful shutdown (SIGINT/SIGTERM)
-- server timeouts (ReadHeader/Write/Idle)
-- лог старта/остановки
-
+- server timeouts (ReadHeader/Read/Write/Idle)
 **Опционально:**
-- `/healthz`
-- `pprof`
+- `/healthz` через `WithHealth`
+- `pprof` через `WithPprof`
 
 ---
 
@@ -160,14 +167,14 @@ func(ctx context.Context, r *http.Request) (any, error)
 
 ---
 
-## 4. Поведение по умолчанию (прочность)
-Включено из коробки:
-- server + request timeouts
-- recover
-- request id
-- access log по результату (status, dur, bytes, error code)
-- body size limit
-- единый error контракт
+## 4. Рекомендуемая сборка runtime
+nope не включает middleware автоматически. Рекомендуемый минимум:
+- `Recover` для безопасного 500
+- `RequestID` для трассировки
+- `Timeout` для ограничений времени запроса
+- `AccessLog` для операционной видимости
+
+Body‑лимит и строгий JSON обеспечиваются `json.DecodeJSON`.
 
 ---
 
@@ -203,4 +210,3 @@ func(ctx context.Context, r *http.Request) (any, error)
 ## 8. Версионирование
 - v0.x — API может меняться
 - цель v1.0 — заморозка публичного API
-

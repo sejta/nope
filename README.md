@@ -56,23 +56,75 @@ nope существует, чтобы:
 ## Быстрый старт (упрощённо)
 
 ```go
-r := router.New()
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-r.GET("/healthz", httpkit.Adapt(healthHandler))
-r.Mount("/api", apiRouter())
+	r := router.New()
+	r.GET("/ping", httpkit.Adapt(pingHandler))
+	r.Mount("/api", apiRouter())
 
-app.Run(":8080", r)
+	h := http.Handler(r)
+	h = middleware.Timeout(5 * time.Second)(h)
+	h = middleware.RequestID(h)
+	h = middleware.Recover(h)
+	h = app.WithHealth(h)
+	h = app.WithPprof(h) // опционально
+
+	cfg := app.DefaultConfig()
+	cfg.Addr = ":8080"
+
+	_ = app.Run(ctx, cfg, h)
+}
 ```
 
-Хендлер:
+Пример хендлера:
 
 ```go
-func healthHandler(ctx context.Context, r *http.Request) (any, error) {
+func pingHandler(ctx context.Context, r *http.Request) (any, error) {
     return map[string]string{"status": "ok"}, nil
 }
 ```
 
 Ошибки и JSON форматируются автоматически.
+
+---
+
+## Порядок сборки (рекомендуемый)
+- собрать router
+- подключить middleware
+- обернуть в `app.WithHealth` (и при необходимости `app.WithPprof`)
+- запустить через `app.Run(ctx, cfg, h)`
+
+---
+
+## Контракт ошибок и JSON
+
+**Единый JSON формат ошибки:**
+```json
+{
+  "error": {
+    "code": "invalid_json",
+    "message": "invalid json",
+    "fields": { "field": "unexpected field" }
+  }
+}
+```
+
+Правила:
+- `code` обязателен и стабилен
+- `message` безопасен для клиента
+- `fields` опционален и используется для ошибок формата/валидации
+- `cause` никогда не уходит клиенту
+
+**DecodeJSON (строгий вход):**
+- unknown fields → ошибка `unexpected_field` + `fields`
+- превышен лимит body → `body_too_large`
+- любой иной синтаксический сбой → `invalid_json`
+
+**WriteJSON/WriteError:**
+- `Content-Type: application/json; charset=utf-8`
+- ошибки пишутся только через `errors.WriteError`
 
 ---
 
@@ -126,4 +178,3 @@ MIT
 ---
 
 > nope — когда ты хочешь писать сервисы, а не фреймворки.
-
