@@ -1,0 +1,577 @@
+diff --git a/httpkit/types.go b/httpkit/types.go
+new file mode 100644
+index 0000000..f9a977f
+--- /dev/null
++++ b/httpkit/types.go
+@@ -0,0 +1,14 @@
++package httpkit
++
++import (
++	"context"
++	"net/http"
++)
++
++// Handler описывает бизнес-хендлер, не зависящий от HTTP-деталей.
++type Handler func(ctx context.Context, r *http.Request) (any, error)
++
++type result interface {
++	status() int
++	payload() any
++}
+diff --git a/httpkit/results.go b/httpkit/results.go
+new file mode 100644
+index 0000000..1306314
+--- /dev/null
++++ b/httpkit/results.go
+@@ -0,0 +1,35 @@
++package httpkit
++
++import "net/http"
++
++type createdResult struct {
++	payloadValue any
++}
++
++func (r createdResult) status() int {
++	return http.StatusCreated
++}
++
++func (r createdResult) payload() any {
++	return r.payloadValue
++}
++
++type noContentResult struct{}
++
++func (r noContentResult) status() int {
++	return http.StatusNoContent
++}
++
++func (r noContentResult) payload() any {
++	return nil
++}
++
++// Created возвращает результат 201 с JSON-полезной нагрузкой.
++func Created(payload any) any {
++	return createdResult{payloadValue: payload}
++}
++
++// NoContent возвращает результат 204 без тела.
++func NoContent() any {
++	return noContentResult{}
++}
+diff --git a/httpkit/adapt.go b/httpkit/adapt.go
+new file mode 100644
+index 0000000..118e979
+--- /dev/null
++++ b/httpkit/adapt.go
+@@ -0,0 +1,34 @@
++package httpkit
++
++import (
++	"net/http"
++
++	apperrors "github.com/sejta/nope/errors"
++	jsonkit "github.com/sejta/nope/json"
++)
++
++// Adapt преобразует Handler в http.HandlerFunc.
++func Adapt(h Handler) http.HandlerFunc {
++	if h == nil {
++		panic("httpkit: nil handler")
++	}
++	return func(w http.ResponseWriter, r *http.Request) {
++		res, err := h(r.Context(), r)
++		if err != nil {
++			apperrors.WriteError(w, r, err)
++			return
++		}
++
++		if resResult, ok := res.(result); ok {
++			status := resResult.status()
++			if status == http.StatusNoContent {
++				w.WriteHeader(status)
++				return
++			}
++			jsonkit.WriteJSON(w, status, resResult.payload())
++			return
++		}
++
++		jsonkit.WriteJSON(w, http.StatusOK, res)
++	}
++}
+diff --git a/httpkit/httpkit_test.go b/httpkit/httpkit_test.go
+new file mode 100644
+index 0000000..eaa7cce
+--- /dev/null
++++ b/httpkit/httpkit_test.go
+@@ -0,0 +1,140 @@
++package httpkit
++
++import (
++	"context"
++	"encoding/json"
++	"net/http"
++	"net/http/httptest"
++	"testing"
++
++	apperrors "github.com/sejta/nope/errors"
++)
++
++type errorPayload struct {
++	Error struct {
++		Code    string            `json:"code"`
++		Message string            `json:"message"`
++		Fields  map[string]string `json:"fields,omitempty"`
++	} `json:"error"`
++}
++
++func TestAdaptPayloadOK(t *testing.T) {
++	h := func(ctx context.Context, r *http.Request) (any, error) {
++		return map[string]string{"ok": "1"}, nil
++	}
++
++	w := httptest.NewRecorder()
++	r := httptest.NewRequest(http.MethodGet, "/", nil)
++	Adapt(h)(w, r)
++
++	if w.Code != http.StatusOK {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusOK, w.Code)
++	}
++	assertJSONContentType(t, w)
++
++	var body map[string]string
++	decodeJSON(t, w, &body)
++	if body["ok"] != "1" {
++		t.Fatalf("ожидали ok=1, получили %q", body["ok"])
++	}
++}
++
++func TestAdaptCreated(t *testing.T) {
++	h := func(ctx context.Context, r *http.Request) (any, error) {
++		return Created(map[string]string{"ok": "1"}), nil
++	}
++
++	w := httptest.NewRecorder()
++	r := httptest.NewRequest(http.MethodPost, "/", nil)
++	Adapt(h)(w, r)
++
++	if w.Code != http.StatusCreated {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusCreated, w.Code)
++	}
++	assertJSONContentType(t, w)
++
++	var body map[string]string
++	decodeJSON(t, w, &body)
++	if body["ok"] != "1" {
++		t.Fatalf("ожидали ok=1, получили %q", body["ok"])
++	}
++}
++
++func TestAdaptNoContent(t *testing.T) {
++	h := func(ctx context.Context, r *http.Request) (any, error) {
++		return NoContent(), nil
++	}
++
++	w := httptest.NewRecorder()
++	r := httptest.NewRequest(http.MethodDelete, "/", nil)
++	Adapt(h)(w, r)
++
++	if w.Code != http.StatusNoContent {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusNoContent, w.Code)
++	}
++	if w.Body.Len() != 0 {
++		t.Fatalf("ожидали пустое тело, получили %q", w.Body.String())
++	}
++	if got := w.Header().Get("Content-Type"); got != "" {
++		t.Fatalf("не ожидали Content-Type, получили %q", got)
++	}
++}
++
++func TestAdaptAppError(t *testing.T) {
++	h := func(ctx context.Context, r *http.Request) (any, error) {
++		return nil, apperrors.E(http.StatusBadRequest, "bad_request", "bad")
++	}
++
++	w := httptest.NewRecorder()
++	r := httptest.NewRequest(http.MethodGet, "/", nil)
++	Adapt(h)(w, r)
++
++	if w.Code != http.StatusBadRequest {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusBadRequest, w.Code)
++	}
++	assertJSONContentType(t, w)
++
++	var body errorPayload
++	decodeJSON(t, w, &body)
++	if body.Error.Code != "bad_request" {
++		t.Fatalf("ожидали code=bad_request, получили %q", body.Error.Code)
++	}
++	if body.Error.Message != "bad" {
++		t.Fatalf("ожидали message=bad, получили %q", body.Error.Message)
++	}
++}
++
++func TestAdaptNilPayload(t *testing.T) {
++	h := func(ctx context.Context, r *http.Request) (any, error) {
++		return nil, nil
++	}
++
++	w := httptest.NewRecorder()
++	r := httptest.NewRequest(http.MethodGet, "/", nil)
++	Adapt(h)(w, r)
++
++	if w.Code != http.StatusOK {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusOK, w.Code)
++	}
++	assertJSONContentType(t, w)
++
++	var body any
++	decodeJSON(t, w, &body)
++	if body != nil {
++		t.Fatalf("ожидали null, получили %v", body)
++	}
++}
++
++func assertJSONContentType(t *testing.T, w *httptest.ResponseRecorder) {
++	t.Helper()
++	if got := w.Header().Get("Content-Type"); got != "application/json; charset=utf-8" {
++		t.Fatalf("ожидали Content-Type %q, получили %q", "application/json; charset=utf-8", got)
++	}
++}
++
++func decodeJSON(t *testing.T, w *httptest.ResponseRecorder, dst any) {
++	t.Helper()
++	if err := json.NewDecoder(w.Body).Decode(dst); err != nil {
++		t.Fatalf("не удалось декодировать JSON: %v", err)
++	}
++}
+diff --git a/httpkit/middleware/request_id.go b/httpkit/middleware/request_id.go
+new file mode 100644
+index 0000000..a6e201c
+--- /dev/null
++++ b/httpkit/middleware/request_id.go
+@@ -0,0 +1,50 @@
++package middleware
++
++import (
++	"context"
++	"crypto/rand"
++	"encoding/binary"
++	"encoding/hex"
++	"net/http"
++	"time"
++)
++
++const requestIDHeader = "X-Request-Id"
++
++type reqIDKey struct{}
++
++// RequestID добавляет request id в контекст и в заголовок ответа.
++func RequestID(next http.Handler) http.Handler {
++	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		id := r.Header.Get(requestIDHeader)
++		if id == "" {
++			id = newReqID()
++		}
++		ctx := context.WithValue(r.Context(), reqIDKey{}, id)
++		r = r.WithContext(ctx)
++		w.Header().Set(requestIDHeader, id)
++		next.ServeHTTP(w, r)
++	})
++}
++
++// ReqID возвращает request id из контекста.
++func ReqID(ctx context.Context) string {
++	if ctx == nil {
++		return ""
++	}
++	id, ok := ctx.Value(reqIDKey{}).(string)
++	if !ok {
++		return ""
++	}
++	return id
++}
++
++func newReqID() string {
++	var b [16]byte
++	if _, err := rand.Read(b[:]); err != nil {
++		now := time.Now().UnixNano()
++		binary.LittleEndian.PutUint64(b[:8], uint64(now))
++		binary.LittleEndian.PutUint64(b[8:], uint64(now^0x9e3779b97f4a7c15))
++	}
++	return hex.EncodeToString(b[:])
++}
+diff --git a/httpkit/middleware/recover.go b/httpkit/middleware/recover.go
+new file mode 100644
+index 0000000..c647e83
+--- /dev/null
++++ b/httpkit/middleware/recover.go
+@@ -0,0 +1,20 @@
++package middleware
++
++import (
++	"net/http"
++
++	apperrors "github.com/sejta/nope/errors"
++)
++
++// Recover перехватывает panic и возвращает безопасный JSON-ответ 500.
++func Recover(next http.Handler) http.Handler {
++	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		defer func() {
++			if rec := recover(); rec != nil {
++				err := apperrors.E(http.StatusInternalServerError, apperrors.CodeInternal, apperrors.MsgInternal)
++				apperrors.WriteError(w, r, err)
++			}
++		}()
++		next.ServeHTTP(w, r)
++	})
++}
+diff --git a/httpkit/middleware/timeout.go b/httpkit/middleware/timeout.go
+new file mode 100644
+index 0000000..dea4a68
+--- /dev/null
++++ b/httpkit/middleware/timeout.go
+@@ -0,0 +1,23 @@
++package middleware
++
++import (
++	"context"
++	"net/http"
++	"time"
++)
++
++// Timeout устанавливает deadline на обработку запроса.
++func Timeout(d time.Duration) func(next http.Handler) http.Handler {
++	if d <= 0 {
++		return func(next http.Handler) http.Handler {
++			return next
++		}
++	}
++	return func(next http.Handler) http.Handler {
++		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++			ctx, cancel := context.WithTimeout(r.Context(), d)
++			defer cancel()
++			next.ServeHTTP(w, r.WithContext(ctx))
++		})
++	}
++}
+diff --git a/httpkit/middleware/access_log.go b/httpkit/middleware/access_log.go
+new file mode 100644
+index 0000000..d73f37d
+--- /dev/null
++++ b/httpkit/middleware/access_log.go
+@@ -0,0 +1,57 @@
++package middleware
++
++import (
++	"net/http"
++	"time"
++)
++
++// Logger — минимальный интерфейс логгера.
++type Logger interface {
++	Printf(format string, args ...any)
++}
++
++// AccessLog логирует запрос по завершению.
++func AccessLog(l Logger) func(next http.Handler) http.Handler {
++	if l == nil {
++		return func(next http.Handler) http.Handler {
++			return next
++		}
++	}
++	return func(next http.Handler) http.Handler {
++		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++			start := time.Now()
++			lw := &logWriter{ResponseWriter: w}
++			next.ServeHTTP(lw, r)
++			if lw.status == 0 {
++				lw.status = http.StatusOK
++			}
++			durMS := time.Since(start).Milliseconds()
++			reqID := ReqID(r.Context())
++			if reqID != "" {
++				l.Printf("method=%s path=%s status=%d dur_ms=%d bytes=%d req_id=%s", r.Method, r.URL.Path, lw.status, durMS, lw.bytes, reqID)
++				return
++			}
++			l.Printf("method=%s path=%s status=%d dur_ms=%d bytes=%d", r.Method, r.URL.Path, lw.status, durMS, lw.bytes)
++		})
++	}
++}
++
++type logWriter struct {
++	http.ResponseWriter
++	status int
++	bytes  int
++}
++
++func (w *logWriter) WriteHeader(status int) {
++	w.status = status
++	w.ResponseWriter.WriteHeader(status)
++}
++
++func (w *logWriter) Write(p []byte) (int, error) {
++	if w.status == 0 {
++		w.status = http.StatusOK
++	}
++	n, err := w.ResponseWriter.Write(p)
++	w.bytes += n
++	return n, err
++}
+diff --git a/httpkit/middleware/middleware_test.go b/httpkit/middleware/middleware_test.go
+new file mode 100644
+index 0000000..da5b41b
+--- /dev/null
++++ b/httpkit/middleware/middleware_test.go
+@@ -0,0 +1,150 @@
++package middleware
++
++import (
++	"encoding/json"
++	"fmt"
++	"net/http"
++	"net/http/httptest"
++	"strings"
++	"testing"
++	"time"
++
++	apperrors "github.com/sejta/nope/errors"
++)
++
++type testLogger struct {
++	lines []string
++}
++
++func (l *testLogger) Printf(format string, args ...any) {
++	l.lines = append(l.lines, fmt.Sprintf(format, args...))
++}
++
++type errorPayload struct {
++	Error struct {
++		Code    string            `json:"code"`
++		Message string            `json:"message"`
++		Fields  map[string]string `json:"fields,omitempty"`
++	} `json:"error"`
++}
++
++func TestRequestIDUsesHeader(t *testing.T) {
++	var got string
++	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		got = ReqID(r.Context())
++		w.WriteHeader(http.StatusNoContent)
++	})
++
++	req := httptest.NewRequest(http.MethodGet, "/", nil)
++	req.Header.Set(requestIDHeader, "abc")
++	w := httptest.NewRecorder()
++
++	RequestID(inner).ServeHTTP(w, req)
++
++	if got != "abc" {
++		t.Fatalf("ожидали request id %q, получили %q", "abc", got)
++	}
++	if header := w.Header().Get(requestIDHeader); header != "abc" {
++		t.Fatalf("ожидали заголовок %q, получили %q", "abc", header)
++	}
++}
++
++func TestRequestIDGeneratesWhenMissing(t *testing.T) {
++	var got string
++	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		got = ReqID(r.Context())
++		w.WriteHeader(http.StatusNoContent)
++	})
++
++	req := httptest.NewRequest(http.MethodGet, "/", nil)
++	w := httptest.NewRecorder()
++
++	RequestID(inner).ServeHTTP(w, req)
++
++	if got == "" {
++		t.Fatalf("ожидали непустой request id")
++	}
++	if header := w.Header().Get(requestIDHeader); header == "" {
++		t.Fatalf("ожидали непустой заголовок request id")
++	}
++	if got != w.Header().Get(requestIDHeader) {
++		t.Fatalf("ожидали одинаковые значения в контексте и заголовке")
++	}
++}
++
++func TestRecoverPanic(t *testing.T) {
++	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		panic("boom")
++	})
++
++	w := httptest.NewRecorder()
++	req := httptest.NewRequest(http.MethodGet, "/", nil)
++
++	Recover(inner).ServeHTTP(w, req)
++
++	if w.Code != http.StatusInternalServerError {
++		t.Fatalf("ожидали статус %d, получили %d", http.StatusInternalServerError, w.Code)
++	}
++	var body errorPayload
++	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
++		t.Fatalf("не удалось декодировать JSON: %v", err)
++	}
++	if body.Error.Code != apperrors.CodeInternal {
++		t.Fatalf("ожидали code %q, получили %q", apperrors.CodeInternal, body.Error.Code)
++	}
++}
++
++func TestTimeoutSetsDeadline(t *testing.T) {
++	var ok bool
++	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		_, ok = r.Context().Deadline()
++		w.WriteHeader(http.StatusNoContent)
++	})
++
++	w := httptest.NewRecorder()
++	req := httptest.NewRequest(http.MethodGet, "/", nil)
++
++	Timeout(10*time.Millisecond)(inner).ServeHTTP(w, req)
++
++	if !ok {
++		t.Fatalf("ожидали deadline в контексте")
++	}
++}
++
++func TestAccessLogWritesLine(t *testing.T) {
++	logger := &testLogger{}
++	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		w.WriteHeader(http.StatusCreated)
++		_, _ = w.Write([]byte("ok"))
++	})
++
++	req := httptest.NewRequest(http.MethodGet, "/x", nil)
++	req.Header.Set(requestIDHeader, "abc")
++	w := httptest.NewRecorder()
++
++	h := RequestID(AccessLog(logger)(inner))
++	h.ServeHTTP(w, req)
++
++	if len(logger.lines) != 1 {
++		t.Fatalf("ожидали одну строку лога, получили %d", len(logger.lines))
++	}
++	line := logger.lines[0]
++	checks := []string{
++		"method=GET",
++		"path=/x",
++		"status=201",
++		"bytes=2",
++		"req_id=abc",
++	}
++	for _, part := range checks {
++		if !strings.Contains(line, part) {
++			t.Fatalf("ожидали в логе %q, получили %q", part, line)
++		}
++	}
++}
++
++func TestReqIDNilContext(t *testing.T) {
++	if ReqID(nil) != "" {
++		t.Fatalf("ожидали пустой request id для nil контекста")
++	}
++}
