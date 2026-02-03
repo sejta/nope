@@ -68,7 +68,7 @@ func main() {
 	h = middleware.Timeout(5 * time.Second)(h)
 	h = middleware.RequestID(h)
 	h = middleware.Recover(h)
-	h = app.WithHealth(h)
+	h = app.WithHealth(h) // добавляет GET /healthz
 	h = app.WithPprof(h) // опционально
 
 	cfg := app.DefaultConfig()
@@ -116,6 +116,19 @@ func pingHandler(ctx context.Context, r *http.Request) (any, error) {
 - `message` безопасен для клиента
 - `fields` опционален и используется для ошибок формата/валидации
 - `cause` никогда не уходит клиенту
+ 
+Health:
+- стандартный endpoint — `GET /healthz` через `app.WithHealth`
+- если нужен свой `/healthz`, не оборачивайте handler через `WithHealth`
+
+**Создание ошибок:**
+```go
+return nil, errors.E(http.StatusBadRequest, "validation_failed", "validation failed")
+```
+```go
+app := errors.E(http.StatusBadRequest, "validation_failed", "validation failed")
+return nil, errors.WithField(app, "title", "required")
+```
 
 **DecodeJSON (строгий вход):**
 - unknown fields → ошибка `unexpected_field` + `fields`

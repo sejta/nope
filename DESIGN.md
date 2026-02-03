@@ -79,6 +79,9 @@ func(ctx context.Context, r *http.Request) (any, error)
 - payload → 200
 - `Created(payload)` → 201
 - `NoContent()` → 204
+ 
+**Ошибки:**
+- `Adapt` рендерит ошибку через `errors.WriteError`
 
 **API v0.1:**
 - `Handler`
@@ -140,6 +143,10 @@ func(ctx context.Context, r *http.Request) (any, error)
 **Опционально:**
 - `/healthz` через `WithHealth`
 - `pprof` через `WithPprof`
+
+**Health:**
+- `WithHealth` всегда перехватывает `GET /healthz`
+- если нужен свой `/healthz`, не оборачивайте handler через `WithHealth`
 
 ---
 
