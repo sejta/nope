@@ -44,7 +44,7 @@ func newReqID() string {
 	if _, err := rand.Read(b[:]); err != nil {
 		now := time.Now().UnixNano()
 		binary.LittleEndian.PutUint64(b[:8], uint64(now))
-		binary.LittleEndian.PutUint64(b[8:], uint64(now^0x9e3779b97f4a7c15))
+		binary.LittleEndian.PutUint64(b[8:], uint64(now)^uint64(0x9e3779b97f4a7c15))
 	}
 	return hex.EncodeToString(b[:])
 }

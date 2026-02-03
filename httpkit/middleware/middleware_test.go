@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -143,8 +144,43 @@ func TestAccessLogWritesLine(t *testing.T) {
 	}
 }
 
-func TestReqIDNilContext(t *testing.T) {
-	if ReqID(nil) != "" {
-		t.Fatalf("ожидали пустой request id для nil контекста")
+func TestAccessLogGetsReqIDFromHeader(t *testing.T) {
+	logger := &testLogger{}
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	w := httptest.NewRecorder()
+
+	h := AccessLog(logger)(RequestID(inner))
+	h.ServeHTTP(w, req)
+
+	if len(logger.lines) != 1 {
+		t.Fatalf("ожидали одну строку лога, получили %d", len(logger.lines))
 	}
+	line := logger.lines[0]
+	reqID := extractField(line, "req_id=")
+	if reqID == "" {
+		t.Fatalf("ожидали непустой req_id в логе, получили %q", line)
+	}
+}
+
+func TestReqIDNilContext(t *testing.T) {
+	if ReqID(context.TODO()) != "" {
+		t.Fatalf("ожидали пустой request id для пустого контекста")
+	}
+}
+
+func extractField(line, key string) string {
+	idx := strings.Index(line, key)
+	if idx == -1 {
+		return ""
+	}
+	start := idx + len(key)
+	end := start
+	for end < len(line) && line[end] != ' ' {
+		end++
+	}
+	return line[start:end]
 }
