@@ -2,6 +2,11 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v0.3.0 — 2026-02-03
+- router: wildcard `*path` (catch-all) с фиксированной политикой
+- routing docs: спецификация wildcard
+- tests: интеграционные кейсы wildcard
+
 ## v0.2.0 — 2026-02-03
 - router: интеграционные тесты (golden) для матчинга/ошибок/params/mount
 - errors: единый error contract подтверждён тестами + интеграция через HTTP

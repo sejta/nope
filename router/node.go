@@ -6,6 +6,8 @@ type node struct {
 	static    map[string]*node
 	param     *node
 	paramName string
+	wildcard  *node
+	wcName    string
 	handlers  map[string]http.Handler
 }
 

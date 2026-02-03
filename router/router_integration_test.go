@@ -53,6 +53,17 @@ func buildRouter() *router.Router {
 	r.GET("/healthz", text("ok"))
 	r.GET("/a", text("a"))
 	r.GET("/a/b", text("ab"))
+	r.GET("/assets/logo.png", text("logo"))
+	r.GET("/assets/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := router.Param(r, "id")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("id:" + id))
+	}))
+	r.GET("/assets/*path", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := router.Param(r, "path")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(path))
+	}))
 	r.GET("/users/:id", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := router.Param(r, "id")
 		w.WriteHeader(http.StatusOK)
@@ -180,6 +191,61 @@ func TestRouterIntegrationBasics(t *testing.T) {
 			wantBody:   "42",
 		},
 		{
+			name:       "wildcard basic",
+			method:     http.MethodGet,
+			path:       "/assets/a/b.png",
+			wantStatus: http.StatusOK,
+			wantBody:   "a/b.png",
+		},
+		{
+			name:       "wildcard empty slash",
+			method:     http.MethodGet,
+			path:       "/assets/",
+			wantStatus: http.StatusOK,
+			wantBody:   "",
+		},
+		{
+			name:       "wildcard empty no slash",
+			method:     http.MethodGet,
+			path:       "/assets",
+			wantStatus: http.StatusOK,
+			wantBody:   "",
+		},
+		{
+			name:       "wildcard static priority",
+			method:     http.MethodGet,
+			path:       "/assets/logo.png",
+			wantStatus: http.StatusOK,
+			wantBody:   "logo",
+		},
+		{
+			name:       "wildcard param priority",
+			method:     http.MethodGet,
+			path:       "/assets/123",
+			wantStatus: http.StatusOK,
+			wantBody:   "id:123",
+		},
+		{
+			name:       "wildcard boundary",
+			method:     http.MethodGet,
+			path:       "/assetsX/a",
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "wildcard encoded path",
+			method:     http.MethodGet,
+			path:       "/assets/a%20b/c",
+			wantStatus: http.StatusOK,
+			wantBody:   "a b/c",
+		},
+		{
+			name:              "wildcard method not allowed",
+			method:            http.MethodPost,
+			path:              "/assets/a",
+			wantStatus:        http.StatusMethodNotAllowed,
+			wantAllowContains: http.MethodGet,
+		},
+		{
 			name:       "not found",
 			method:     http.MethodGet,
 			path:       "/missing",
@@ -266,6 +332,29 @@ func TestRouterIntegrationBasics(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRouterIntegrationWildcardConflicts(t *testing.T) {
+	t.Run("wildcard not last segment", func(t *testing.T) {
+		r := router.New()
+		defer func() {
+			if rec := recover(); rec == nil {
+				t.Fatalf("ожидали panic")
+			}
+		}()
+		r.GET("/assets/*path/x", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	})
+
+	t.Run("wildcard conflict", func(t *testing.T) {
+		r := router.New()
+		r.GET("/assets/*a", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		defer func() {
+			if rec := recover(); rec == nil {
+				t.Fatalf("ожидали panic")
+			}
+		}()
+		r.GET("/assets/*b", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	})
 }
 
 func TestRouterIntegrationMiddlewareOrder(t *testing.T) {

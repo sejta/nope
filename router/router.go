@@ -33,10 +33,25 @@ func (r *Router) Handle(method, pattern string, h http.Handler) {
 	}
 
 	cur := r.root
-	for _, seg := range splitPath(pattern) {
+	segments := splitPath(pattern)
+	for i, seg := range segments {
 		switch {
 		case strings.HasPrefix(seg, "*"):
-			panic("router: wildcard is not supported in v0.1")
+			if len(seg) == 1 {
+				panic("router: empty wildcard name")
+			}
+			if i != len(segments)-1 {
+				panic("router: wildcard must be the last segment")
+			}
+			if cur.wildcard != nil && cur.wcName != seg[1:] {
+				panic("router: wildcard conflict")
+			}
+			if cur.wildcard == nil {
+				cur.wildcard = newNode()
+				cur.wcName = seg[1:]
+			}
+			cur = cur.wildcard
+			goto done
 		case strings.HasPrefix(seg, ":"):
 			if len(seg) == 1 {
 				panic("router: empty param name")
@@ -55,6 +70,7 @@ func (r *Router) Handle(method, pattern string, h http.Handler) {
 			cur = next
 		}
 	}
+done:
 
 	cur.handlers[method] = h
 }

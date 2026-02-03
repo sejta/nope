@@ -114,7 +114,7 @@ func(ctx context.Context, r *http.Request) (any, error)
 
 **Поддержка v0.1:**
 - методы: GET, POST, PUT, PATCH, DELETE
-- static и `:param` сегменты
+- static, `:param` и `*path` сегменты (wildcard — только в конце)
 - корректные 404 / 405 (+ Allow)
 - `Mount(prefix, handler)` для зон (`/api`, `/admin`, версии)
 
