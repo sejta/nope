@@ -10,6 +10,7 @@ type Config struct {
 	WriteTimeout      time.Duration
 	IdleTimeout       time.Duration
 	ShutdownTimeout   time.Duration // таймаут graceful shutdown
+	Hooks             Hooks
 }
 
 // DefaultConfig возвращает безопасные дефолты.

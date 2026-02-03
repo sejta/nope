@@ -30,6 +30,7 @@ func Run(ctx context.Context, cfg Config, h http.Handler) error {
 
 func runWithListener(ctx context.Context, cfg Config, h http.Handler, ln net.Listener) error {
 	cfg = withDefaults(cfg)
+	h = wrapHooks(h, cfg.Hooks)
 
 	srv := &http.Server{
 		Handler:           h,

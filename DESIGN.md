@@ -148,6 +148,12 @@ func(ctx context.Context, r *http.Request) (any, error)
 - `WithHealth` всегда перехватывает `GET /healthz`
 - если нужен свой `/healthz`, не оборачивайте handler через `WithHealth`
 
+**Hooks:**
+- `Hooks` — минимальные callback'и для логирования/метрик
+- `OnRequestStart` может заменить `context.Context`
+- `OnRequestEnd` получает статус и длительность
+- `OnPanic` вызывается при панике, если она дошла до app
+
 ---
 
 ### 3.7 DBKit — тонкая работа с БД

@@ -141,6 +141,31 @@ return nil, errors.WithField(app, "title", "required")
 
 ---
 
+## Hooks
+
+Минимальные точки расширения для логирования/метрик.
+
+```go
+cfg := app.DefaultConfig()
+cfg.Hooks = app.Hooks{
+	OnRequestStart: func(ctx context.Context, info app.RequestInfo) context.Context {
+		return context.WithValue(ctx, "req_start", time.Now())
+	},
+	OnRequestEnd: func(ctx context.Context, info app.RequestInfo, res app.ResponseInfo) {
+		log.Printf("method=%s path=%s status=%d dur=%s", info.Method, info.Path, res.Status, res.Duration)
+	},
+	OnPanic: func(ctx context.Context, info app.RequestInfo, recovered any) {
+		log.Printf("panic: %v", recovered)
+	},
+}
+
+_ = app.Run(ctx, cfg, h)
+```
+
+`OnPanic` вызывается только если panic дошла до обёртки app.
+
+---
+
 ## Зоны (`/api`, `/admin`)
 
 Зоны реализуются **только через `Mount`**:

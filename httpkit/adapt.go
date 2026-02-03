@@ -15,6 +15,9 @@ func Adapt(h Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		res, err := h(r.Context(), r)
 		if err != nil {
+			if setter, ok := w.(interface{ SetErr(error) }); ok {
+				setter.SetErr(err)
+			}
 			apperrors.WriteError(w, r, err)
 			return
 		}

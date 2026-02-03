@@ -2,6 +2,11 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v0.4.0 — 2026-02-03
+- app: hooks (request start/end/panic) без внешних зависимостей
+- tests: hooks integration contract
+- docs: hooks usage
+
 ## v0.3.0 — 2026-02-03
 - router: wildcard `*path` (catch-all) с фиксированной политикой
 - routing docs: спецификация wildcard
