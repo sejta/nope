@@ -85,7 +85,7 @@ Params кладутся в `request.Context()`.
 
 **API:**
 - `Param(r, key) string`
-- `Params(r) []Param`
+- `Params(r) []RouteParam`
 
 ### 5.2 Ограничения
 - params используются **только** для маршрутизации
@@ -189,4 +189,3 @@ v0.1:
 ---
 
 **nope routing — boring, strict, predictable.**
-
