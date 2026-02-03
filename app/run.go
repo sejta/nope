@@ -56,15 +56,17 @@ func runWithListener(ctx context.Context, cfg Config, h http.Handler, ln net.Lis
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		if shutdownCtx.Err() == context.DeadlineExceeded {
-			_ = srv.Close()
-		}
+	shutdownErr := srv.Shutdown(shutdownCtx)
+	if shutdownErr != nil && shutdownCtx.Err() == context.DeadlineExceeded {
+		_ = srv.Close()
 	}
 
 	err := <-errCh
 	if err == http.ErrServerClosed {
 		return nil
+	}
+	if shutdownErr != nil && shutdownCtx.Err() != context.DeadlineExceeded {
+		return shutdownErr
 	}
 	return err
 }

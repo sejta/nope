@@ -141,12 +141,15 @@ func TestRunWithListener(t *testing.T) {
 func waitForHealth(addr string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	url := "http://" + addr + "/healthz"
+	client := &http.Client{Timeout: 200 * time.Millisecond}
 
 	for time.Now().Before(deadline) {
-		r, err := http.Get(url)
+		r, err := client.Get(url)
 		if err == nil {
 			_ = r.Body.Close()
-			return nil
+			if r.StatusCode == http.StatusOK {
+				return nil
+			}
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
