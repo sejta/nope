@@ -154,6 +154,14 @@ func(ctx context.Context, r *http.Request) (any, error)
 - `OnRequestEnd` получает статус и длительность
 - `OnPanic` вызывается при панике, если она дошла до app
 
+**App policy (frozen since v0.6.0):**
+- `OnRequestStart` вызывается до handler и может заменить `context.Context`.
+- `OnRequestEnd` вызывается всегда: success/error/panic.
+- `OnPanic` вызывается только если panic дошёл до app wrapper.
+- Panic → error contract 500, если ответ ещё не начал писаться.
+- Если заголовки/тело уже писались, JSON‑ошибка не пишется.
+- В `OnRequestEnd` при panic `Err` всегда internal, статус — тот, что успел уйти.
+
 ---
 
 ### 3.7 DBKit — тонкая работа с БД

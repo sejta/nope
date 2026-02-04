@@ -219,6 +219,7 @@ httpkit.WriteNoContent(w)
 - **ROUTING.md** — строгая спецификация роутинга
 
 Эти документы — нормативные.
+Routing policy frozen since `v0.6.0` — см. `ROUTING.md`.
 
 ---
 

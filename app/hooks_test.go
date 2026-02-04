@@ -168,6 +168,44 @@ func TestHooksPanicCase(t *testing.T) {
 	}
 }
 
+func TestHooksPanicAfterWrite(t *testing.T) {
+	var panicCount int32
+	var endStatus int
+	var endErr error
+	hooks := Hooks{
+		OnPanic: func(ctx context.Context, info RequestInfo, recovered any) {
+			atomic.AddInt32(&panicCount, 1)
+		},
+		OnRequestEnd: func(ctx context.Context, info RequestInfo, res ResponseInfo) {
+			endStatus = res.Status
+			endErr = res.Err
+		},
+	}
+
+	h := wrapHooks(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("partial"))
+		panic("boom")
+	}), hooks)
+
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if atomic.LoadInt32(&panicCount) != 1 {
+		t.Fatalf("ожидали OnPanic=1, получили %d", panicCount)
+	}
+	if endStatus != http.StatusOK {
+		t.Fatalf("ожидали status %d, получили %d", http.StatusOK, endStatus)
+	}
+	if endErr == nil {
+		t.Fatalf("ожидали Err, получили nil")
+	}
+	if body := rec.Body.String(); body != "partial" {
+		t.Fatalf("ожидали body %q, получили %q", "partial", body)
+	}
+}
+
 func TestHooksNoop(t *testing.T) {
 	h := wrapHooks(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
