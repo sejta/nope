@@ -166,6 +166,29 @@ _ = app.Run(ctx, cfg, h)
 
 ---
 
+## HTTP helpers
+
+Рекомендуемый путь — `httpkit.Adapt` + `httpkit.DecodeJSON`:
+
+```go
+func create(ctx context.Context, r *http.Request) (any, error) {
+	var req CreateRequest
+	if err := httpkit.DecodeJSON(r, &req); err != nil {
+		return nil, errors.E(http.StatusBadRequest, "bad_json", "invalid json")
+	}
+	return httpkit.Created(map[string]string{"id": "1"}), nil
+}
+```
+
+Для `net/http`‑style можно писать напрямую:
+
+```go
+httpkit.JSON(w, http.StatusCreated, map[string]any{"ok": true})
+httpkit.WriteNoContent(w)
+```
+
+---
+
 ## Зоны (`/api`, `/admin`)
 
 Зоны реализуются **только через `Mount`**:

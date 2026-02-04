@@ -2,6 +2,14 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v0.5.1 — 2026-02-03
+- httpkit: JSON больше не возвращает error (убран ложный контракт)
+
+## v0.5.0 — 2026-02-03
+- httpkit: JSON/DecodeJSON/WriteNoContent (facade)
+- tests: httpkit helpers
+- docs: HTTP helpers usage
+
 ## v0.4.0 — 2026-02-03
 - app: hooks (request start/end/panic) без внешних зависимостей
 - tests: hooks integration contract
