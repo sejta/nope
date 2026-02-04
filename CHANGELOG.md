@@ -2,6 +2,9 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v1.0.0 — 2026-02-03
+- First stable release. No functional changes since v0.9.0.
+
 ## v0.9.0 — 2026-02-03
 - release candidate: API stable statement
 - docs: final sweep + API.md stability
