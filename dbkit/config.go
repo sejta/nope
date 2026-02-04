@@ -7,6 +7,8 @@ import (
 )
 
 // Config описывает параметры подключения и пула для database/sql.
+//
+// Driver по умолчанию: "mysql".
 type Config struct {
 	Driver string // default: "mysql"
 	DSN    string

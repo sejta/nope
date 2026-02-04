@@ -8,6 +8,10 @@ import (
 )
 
 // Adapt преобразует Handler в http.HandlerFunc.
+//
+// Поведение:
+// - успех → JSON-ответ (200/201/204)
+// - ошибка → errors.WriteError (единый error contract)
 func Adapt(h Handler) http.HandlerFunc {
 	if h == nil {
 		panic("httpkit: nil handler")

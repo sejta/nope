@@ -1,2 +1,2 @@
-// Package httpkit определяет контракт хендлеров и общие HTTP middleware.
+// Package httpkit определяет контракт хендлеров, middleware и HTTP‑helpers.
 package httpkit

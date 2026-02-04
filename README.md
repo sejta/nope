@@ -238,9 +238,12 @@ err = dbkit.InTx(ctx, db, func(ctx context.Context, tx dbkit.Conn) error {
 
 - **DESIGN.md** — философия, киты, фичи и границы
 - **ROUTING.md** — строгая спецификация роутинга
+- **API.md** — список публичных пакетов
 
 Эти документы — нормативные.
 Routing policy frozen since `v0.6.0` — см. `ROUTING.md`.
+
+Smoke‑сборка примеров: `scripts/ci.sh`.
 
 ---
 

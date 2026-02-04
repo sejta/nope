@@ -29,7 +29,7 @@ func Created(payload any) any {
 	return createdResult{payloadValue: payload}
 }
 
-// NoContent возвращает результат 204 без тела.
+// NoContent возвращает результат 204 без тела для использования с Adapt.
 func NoContent() any {
 	return noContentResult{}
 }
