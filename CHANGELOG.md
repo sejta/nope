@@ -2,6 +2,12 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v0.9.0 — 2026-02-03
+- release candidate: API stable statement
+- docs: final sweep + API.md stability
+- ci: GitHub Actions uses scripts/ci.sh
+- no functional changes
+
 ## v0.8.0 — 2026-02-03
 - stabilization: public API inventory, godoc, docs sync
 - examples: smoke-build via scripts/ci.sh
