@@ -177,6 +177,9 @@ func(ctx context.Context, r *http.Request) (any, error)
 **Правила:**
 - только Context‑методы
 - Tx только через `InTx`
+ - MySQL — default и гарантирован
+ - PostgreSQL — best‑effort (если драйвер подключён)
+ - другие драйверы → `KindUnknown`
 
 ---
 

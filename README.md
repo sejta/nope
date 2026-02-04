@@ -189,6 +189,27 @@ httpkit.WriteNoContent(w)
 
 ---
 
+## DBKit
+
+```go
+db, err := dbkit.Open(dbkit.Config{
+	DSN: "...", // mysql by default
+})
+if err != nil {
+	return err
+}
+
+err = dbkit.InTx(ctx, db, func(ctx context.Context, tx dbkit.Conn) error {
+	_, err := tx.ExecContext(ctx, "INSERT INTO users(email) VALUES(?)", email)
+	if dbkit.IsUnique(err) {
+		return errors.E(http.StatusConflict, "user.exists", "user already exists")
+	}
+	return err
+})
+```
+
+---
+
 ## Зоны (`/api`, `/admin`)
 
 Зоны реализуются **только через `Mount`**:

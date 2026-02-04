@@ -2,6 +2,11 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v0.7.0 — 2026-02-03
+- dbkit: MySQL-first Open / Conn / InTx
+- dbkit: error classification (no rows / unique / fk)
+- docs: DBKit usage
+
 ## v0.6.0 — 2026-02-03
 - policy freeze: routing/app
 - recorder: Unwrap для совместимости обёрток
