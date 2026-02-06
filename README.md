@@ -121,6 +121,14 @@ func pingHandler(ctx context.Context, r *http.Request) (any, error) {
 - обернуть в `app.WithHealth` (и при необходимости `app.WithPprof`)
 - запустить через `app.Run(ctx, cfg, h)`
 
+Коротко про таймаут:
+```go
+h := http.Handler(r)
+h = middleware.Timeout(5 * time.Second)(h)
+h = middleware.TimeoutError(middleware.DefaultTimeoutError)(h)
+```
+`Timeout` отменяет `ctx`; `TimeoutError` опционально пишет 504, если ничего не было записано.
+
 ---
 
 ## Контракт ошибок и JSON

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -166,6 +167,130 @@ func TestAccessLogGetsReqIDFromHeader(t *testing.T) {
 	}
 }
 
+func TestTimeoutErrorWritesOnDeadline(t *testing.T) {
+	started := make(chan struct{})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := newManualDeadlineContext(req.Context())
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		TimeoutError(DefaultTimeoutError)(inner).ServeHTTP(w, req)
+		close(done)
+	}()
+
+	<-started
+	ctx.trigger(context.DeadlineExceeded)
+	<-done
+
+	if w.Code != http.StatusGatewayTimeout {
+		t.Fatalf("ожидали статус %d, получили %d", http.StatusGatewayTimeout, w.Code)
+	}
+	var body errorPayload
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("не удалось декодировать JSON: %v", err)
+	}
+	if body.Error.Code != apperrors.CodeTimeout {
+		t.Fatalf("ожидали code %q, получили %q", apperrors.CodeTimeout, body.Error.Code)
+	}
+	if body.Error.Message != apperrors.MsgTimeout {
+		t.Fatalf("ожидали message %q, получили %q", apperrors.MsgTimeout, body.Error.Message)
+	}
+}
+
+func TestTimeoutErrorDoesNotOverwriteResponse(t *testing.T) {
+	wrote := make(chan struct{})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+		close(wrote)
+		<-r.Context().Done()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := newManualDeadlineContext(req.Context())
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		TimeoutError(DefaultTimeoutError)(inner).ServeHTTP(w, req)
+		close(done)
+	}()
+
+	<-wrote
+	ctx.trigger(context.DeadlineExceeded)
+	<-done
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("ожидали статус %d, получили %d", http.StatusOK, w.Code)
+	}
+	if body := w.Body.String(); body != "ok" {
+		t.Fatalf("ожидали тело %q, получили %q", "ok", body)
+	}
+}
+
+func TestTimeoutErrorDoesNotOverrideErrorResponse(t *testing.T) {
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		err := apperrors.E(http.StatusBadRequest, "bad_request", "bad request")
+		apperrors.WriteError(w, r, err)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := newManualDeadlineContext(req.Context())
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	TimeoutError(DefaultTimeoutError)(inner).ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("ожидали статус %d, получили %d", http.StatusBadRequest, w.Code)
+	}
+	var body errorPayload
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("не удалось декодировать JSON: %v", err)
+	}
+	if body.Error.Code == apperrors.CodeTimeout {
+		t.Fatalf("не ожидали code %q", apperrors.CodeTimeout)
+	}
+}
+
+func TestTimeoutErrorIgnoresCanceledContext(t *testing.T) {
+	started := make(chan struct{})
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		<-r.Context().Done()
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	ctx := newManualDeadlineContext(req.Context())
+	req = req.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	done := make(chan struct{})
+	go func() {
+		TimeoutError(DefaultTimeoutError)(inner).ServeHTTP(w, req)
+		close(done)
+	}()
+
+	<-started
+	ctx.trigger(context.Canceled)
+	<-done
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("ожидали статус %d, получили %d", http.StatusOK, w.Code)
+	}
+	if w.Body.Len() != 0 {
+		t.Fatalf("ожидали пустое тело, получили %q", w.Body.String())
+	}
+}
+
 func TestReqIDNilContext(t *testing.T) {
 	if ReqID(context.TODO()) != "" {
 		t.Fatalf("ожидали пустой request id для пустого контекста")
@@ -183,4 +308,48 @@ func extractField(line, key string) string {
 		end++
 	}
 	return line[start:end]
+}
+
+type manualDeadlineContext struct {
+	parent   context.Context
+	deadline time.Time
+	done     chan struct{}
+	once     sync.Once
+	mu       sync.Mutex
+	err      error
+}
+
+func newManualDeadlineContext(parent context.Context) *manualDeadlineContext {
+	return &manualDeadlineContext{
+		parent:   parent,
+		deadline: time.Now().Add(time.Hour),
+		done:     make(chan struct{}),
+	}
+}
+
+func (c *manualDeadlineContext) Deadline() (time.Time, bool) {
+	return c.deadline, true
+}
+
+func (c *manualDeadlineContext) Done() <-chan struct{} {
+	return c.done
+}
+
+func (c *manualDeadlineContext) Err() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.err
+}
+
+func (c *manualDeadlineContext) Value(key any) any {
+	return c.parent.Value(key)
+}
+
+func (c *manualDeadlineContext) trigger(err error) {
+	c.mu.Lock()
+	c.err = err
+	c.mu.Unlock()
+	c.once.Do(func() {
+		close(c.done)
+	})
 }

@@ -2,6 +2,11 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v1.1.0 — 2026-02-06
+- docs: MIDDLEWARE.md (recommended order + contracts)
+- httpkit: middleware.TimeoutError (optional responder)
+- tests/docs: timeout middleware coverage + README snippet
+
 ## v1.0.0 — 2026-02-03
 - First stable release. No functional changes since v0.9.0.
 
