@@ -177,6 +177,7 @@ return nil, errors.WithField(app, "title", "required")
 ## Hooks
 
 Минимальные точки расширения для логирования/метрик.
+See `OBSERVABILITY.md`.
 
 ```go
 cfg := app.DefaultConfig()

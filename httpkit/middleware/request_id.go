@@ -39,6 +39,11 @@ func ReqID(ctx context.Context) string {
 	return id
 }
 
+// GetRequestID возвращает request id из контекста, если он есть.
+func GetRequestID(ctx context.Context) string {
+	return ReqID(ctx)
+}
+
 func newReqID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {

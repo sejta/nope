@@ -45,6 +45,9 @@ Bootstrap/runtime: запуск HTTP‑сервера, graceful shutdown, health
 ### spa
 Static + fallback (опционально).
 
+### obs
+Hooks-first observability: логирование и метрики через `app.Hooks`.
+
 ---
 
 ## Что не является public API
