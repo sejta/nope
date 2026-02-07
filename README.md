@@ -298,6 +298,12 @@ _ = err
 
 ---
 
+## CORS middleware
+
+Опциональный CORS middleware — см. `CORS.md`.
+
+---
+
 ## Зоны (`/api`, `/admin`)
 
 Зоны реализуются **только через `Mount`**:

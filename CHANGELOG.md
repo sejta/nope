@@ -2,6 +2,10 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v1.5.0 — 2026-02-07
+- middleware: optional CORS
+- tests/docs: CORS middleware
+
 ## v1.4.0 — 2026-02-07
 - clientkit: JSON helpers + HTTPError + limits
 - tests/docs: clientkit
