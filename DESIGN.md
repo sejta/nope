@@ -174,6 +174,11 @@ func(ctx context.Context, r *http.Request) (any, error)
 - `InTx(ctx, db, fn)`
 - классификация ошибок (no rows / unique / fk)
 
+**Helpers v1.3:**
+- `QueryAll`, `QueryOne`, `Exists`
+- `ExecAffected`, `ExecOne`, `ExecAtMostOne`
+- `ErrTooManyRows`, `RowsAffectedError`
+
 **Правила:**
 - только Context‑методы
 - Tx только через `InTx`

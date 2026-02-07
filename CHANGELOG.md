@@ -7,6 +7,11 @@
 - middleware: GetRequestID helper
 - docs: OBSERVABILITY.md
 
+## v1.3.0 — 2026-02-07
+- dbkit: QueryAll/QueryOne/Exists helpers
+- dbkit: ExecAffected/ExecOne/ExecAtMostOne helpers
+- tests/docs: dbkit storage helpers
+
 ## v1.1.0 — 2026-02-06
 - docs: MIDDLEWARE.md (recommended order + contracts)
 - httpkit: middleware.TimeoutError (optional responder)

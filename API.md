@@ -40,7 +40,7 @@ Bootstrap/runtime: запуск HTTP‑сервера, graceful shutdown, health
 Низкоуровневые JSON‑helpers (strict decode/encode).
 
 ### dbkit
-Тонкая работа с `database/sql`: `Open`, `Conn`, `InTx`, классификация ошибок.
+Тонкая работа с `database/sql`: `Open`, `Conn`, `InTx`, классификация ошибок, helpers `QueryAll/QueryOne/Exists` и `ExecAffected/ExecOne/ExecAtMostOne`.
 
 ### spa
 Static + fallback (опционально).

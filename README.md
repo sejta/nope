@@ -242,6 +242,43 @@ err = dbkit.InTx(ctx, db, func(ctx context.Context, tx dbkit.Conn) error {
 })
 ```
 
+Helpers для типовых SELECT/EXEC:
+
+```go
+users, err := dbkit.QueryAll(ctx, db,
+	"SELECT id, email FROM users WHERE active=1",
+	nil,
+	func(r *sql.Rows) (User, error) {
+		var u User
+		return u, r.Scan(&u.ID, &u.Email)
+	},
+)
+```
+
+```go
+u, err := dbkit.QueryOne(ctx, db,
+	"SELECT id, email FROM users WHERE id=?",
+	[]any{id},
+	func(r *sql.Rows) (User, error) {
+		var u User
+		return u, r.Scan(&u.ID, &u.Email)
+	},
+)
+if errors.Is(err, sql.ErrNoRows) {
+	// ...
+}
+```
+
+```go
+if err := dbkit.ExecOne(ctx, db, "UPDATE users SET active=0 WHERE id=?", []any{id}); err != nil {
+	return err
+}
+
+updated, err := dbkit.ExecAtMostOne(ctx, db, "DELETE FROM users WHERE id=?", []any{id})
+_ = updated
+_ = err
+```
+
 ---
 
 ## Зоны (`/api`, `/admin`)
