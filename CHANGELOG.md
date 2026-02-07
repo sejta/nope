@@ -2,15 +2,19 @@
 
 Все заметные изменения фиксируются здесь.
 
-## v1.2.0 — 2026-02-06
-- obs: hooks-based access log + metrics callbacks
-- middleware: GetRequestID helper
-- docs: OBSERVABILITY.md
+## v1.4.0 — 2026-02-07
+- clientkit: JSON helpers + HTTPError + limits
+- tests/docs: clientkit
 
 ## v1.3.0 — 2026-02-07
 - dbkit: QueryAll/QueryOne/Exists helpers
 - dbkit: ExecAffected/ExecOne/ExecAtMostOne helpers
 - tests/docs: dbkit storage helpers
+
+## v1.2.0 — 2026-02-06
+- obs: hooks-based access log + metrics callbacks
+- middleware: GetRequestID helper
+- docs: OBSERVABILITY.md
 
 ## v1.1.0 — 2026-02-06
 - docs: MIDDLEWARE.md (recommended order + contracts)

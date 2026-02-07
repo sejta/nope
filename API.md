@@ -36,6 +36,9 @@ Bootstrap/runtime: запуск HTTP‑сервера, graceful shutdown, health
 ### httpkit
 Контракт handler’ов, адаптер, middleware и HTTP‑helpers.
 
+### clientkit
+Тонкий фасад для исходящих HTTP‑запросов: JSON helpers, HTTPError, лимиты.
+
 ### json
 Низкоуровневые JSON‑helpers (strict decode/encode).
 

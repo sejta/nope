@@ -281,6 +281,23 @@ _ = err
 
 ---
 
+## ClientKit
+
+Тонкий фасад над `net/http` для исходящих запросов. Примеры — в `CLIENTKIT.md`.
+
+```go
+client := clientkit.DefaultClient()
+
+var out struct {
+	ID int `json:"id"`
+}
+
+_, err := clientkit.GetJSON(ctx, client, "https://api.example.com/users/1", &out, nil)
+_ = err
+```
+
+---
+
 ## Зоны (`/api`, `/admin`)
 
 Зоны реализуются **только через `Mount`**:
