@@ -147,12 +147,13 @@ func DoJSON[Req any, Resp any](
 
 // GetJSON выполняет GET и декодирует JSON-ответ.
 func GetJSON[Resp any](ctx context.Context, c *http.Client, url string, out *Resp, opt *JSONOptions) (ResponseMeta, error) {
-	return DoJSON[struct{}, Resp](ctx, c, http.MethodGet, url, nil, out, opt)
+	var req *struct{}
+	return DoJSON(ctx, c, http.MethodGet, url, req, out, opt)
 }
 
 // PostJSON выполняет POST с JSON-телом и декодирует JSON-ответ.
 func PostJSON[Req any, Resp any](ctx context.Context, c *http.Client, url string, req *Req, out *Resp, opt *JSONOptions) (ResponseMeta, error) {
-	return DoJSON[Req, Resp](ctx, c, http.MethodPost, url, req, out, opt)
+	return DoJSON(ctx, c, http.MethodPost, url, req, out, opt)
 }
 
 // Do выполняет обычный запрос и возвращает тело ответа.
