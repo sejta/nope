@@ -41,7 +41,7 @@ nope существует, чтобы:
 
 ---
 
-## Что внутри (v0.1)
+## Что внутри
 
 - `app` — запуск сервера, таймауты, graceful shutdown
 - `server` — фасад для быстрого старта (`New`, `Group`, `Use`, `Run`)
@@ -54,18 +54,26 @@ nope существует, чтобы:
 
 ---
 
-## Stability (v0.9.0)
+## Stability
 
-Публичный API считается стабильным с `v0.9.0`.
+Публичный API стабилен с `v1.0.0`.
 
-Breaking‑изменения, если они когда‑то понадобятся, будут выпускаться только в major‑версиях.
-
+Breaking‑изменения, если когда‑то понадобятся, выпускаются только в major‑версиях.
 Политики routing/app/error contract зафиксированы с `v0.6.0` и описаны в `ROUTING.md` и `DESIGN.md`.
 Полный список публичных пакетов — в `API.md`.
 
 ---
 
-## Быстрый старт (минимальный)
+## Быстрый старт
+
+Ниже три равноправных варианта:
+- минимальный core‑путь;
+- быстрый DX‑путь через `server` фасад;
+- рекомендуемая production‑сборка с явным middleware‑стеком.
+
+Выбирайте по задаче: от «быстро поднять сервис» до «полный контроль над цепочкой».
+
+### Минимальный (core)
 
 ```go
 func main() {
@@ -79,7 +87,7 @@ func main() {
 
 ---
 
-## Быстрый старт (фасад server)
+### Фасад `server`
 
 ```go
 func main() {
@@ -103,7 +111,7 @@ func main() {
 
 ---
 
-## Быстрый старт (рекомендуемый)
+### Рекомендуемый (core + middleware)
 
 ```go
 func main() {
@@ -203,8 +211,7 @@ return nil, errors.WithField(app, "title", "required")
 
 ## Hooks
 
-Минимальные точки расширения для логирования/метрик.
-See `OBSERVABILITY.md`.
+Минимальные точки расширения для логирования/метрик. Детали — в `OBSERVABILITY.md`.
 
 ```go
 cfg := app.DefaultConfig()
@@ -229,8 +236,9 @@ _ = app.Run(ctx, cfg, h)
 
 ## HTTP helpers
 
-Рекомендуемый путь — `httpkit.Adapt` + `httpkit.DecodeJSON`.
-Если нужна безопасная инициализация без panic, используйте `httpkit.TryAdapt`.
+Рекомендуемый путь:
+- `httpkit.Adapt` + `httpkit.DecodeJSON`;
+- `httpkit.TryAdapt`, если нужна безопасная инициализация без panic.
 
 ```go
 func create(ctx context.Context, r *http.Request) (any, error) {
@@ -253,6 +261,12 @@ httpkit.WriteNoContent(w)
 
 ## DBKit
 
+Работа с БД строится вокруг `database/sql` + контекстных методов:
+- подключение и pool через `dbkit.Open`;
+- транзакции через `dbkit.InTx`;
+- типовые операции через `QueryAll`, `QueryOne`, `ExecOne`, `ExecAtMostOne`;
+- централизованная классификация ошибок через `dbkit.Is*`.
+
 ```go
 db, err := dbkit.Open(dbkit.Config{
 	DSN: "...", // mysql by default
@@ -270,7 +284,7 @@ err = dbkit.InTx(ctx, db, func(ctx context.Context, tx dbkit.Conn) error {
 })
 ```
 
-Helpers для типовых SELECT/EXEC:
+Пример типового SELECT:
 
 ```go
 users, err := dbkit.QueryAll(ctx, db,
@@ -297,21 +311,13 @@ if errors.Is(err, sql.ErrNoRows) {
 }
 ```
 
-```go
-if err := dbkit.ExecOne(ctx, db, "UPDATE users SET active=0 WHERE id=?", []any{id}); err != nil {
-	return err
-}
-
-updated, err := dbkit.ExecAtMostOne(ctx, db, "DELETE FROM users WHERE id=?", []any{id})
-_ = updated
-_ = err
-```
+Для EXEC‑операций используйте `ExecOne` и `ExecAtMostOne`.
 
 ---
 
 ## ClientKit
 
-Тонкий фасад над `net/http` для исходящих запросов. Примеры — в `CLIENTKIT.md`.
+Тонкий фасад над `net/http` для исходящих запросов. Подробные примеры — в `CLIENTKIT.md`.
 
 ```go
 client := clientkit.DefaultClient()
@@ -334,13 +340,15 @@ _ = err
 
 ## Зоны (`/api`, `/admin`)
 
-Зоны реализуются **только через `Mount`**:
+Зоны можно собирать двумя способами:
+- core‑путь: через `router.Mount` (базовый примитив зон);
+- фасад `server`: через `Group(prefix)` + `Use(...)`.
+
+Оба подхода эквивалентны по идее: отдельная зона = отдельный middleware‑контур.
 
 - `/api` — публичное API
 - `/admin` — отдельный router + строгие middleware
 - версии (`/api/v1`) — отдельные sub‑router’ы
-
-Без групп, без магии.
 
 ---
 
@@ -366,12 +374,6 @@ _ = err
 Routing policy frozen since `v0.6.0` — см. `ROUTING.md`.
 
 Smoke‑сборка примеров: `scripts/ci.sh`.
-
----
-
-## Статус
-
-Публичный API стабилен с `v1.0.0`.
 
 ---
 
