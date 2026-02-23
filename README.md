@@ -224,7 +224,8 @@ _ = app.Run(ctx, cfg, h)
 
 ## HTTP helpers
 
-Рекомендуемый путь — `httpkit.Adapt` + `httpkit.DecodeJSON`:
+Рекомендуемый путь — `httpkit.Adapt` + `httpkit.DecodeJSON`.
+Если нужна безопасная инициализация без panic, используйте `httpkit.TryAdapt`.
 
 ```go
 func create(ctx context.Context, r *http.Request) (any, error) {

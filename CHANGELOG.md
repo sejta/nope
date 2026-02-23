@@ -2,6 +2,12 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v1.6.1 — 2026-02-23
+- app: `Run` возвращает `ErrNilHandler` вместо panic при `nil` handler
+- httpkit: добавлен safe-адаптер `TryAdapt` (`error` вместо panic)
+- server: регистрация невалидных route pattern переводится в `buildErr` вместо panic
+- tests: добавлены кейсы на safe-поведение для `app/httpkit/server`
+
 ## v1.6.0 — 2026-02-23
 - server: новый фасад для быстрого старта (`New`, `Group`, `Use`, `Run`)
 - tests/docs: покрытие фасада и quick start в README

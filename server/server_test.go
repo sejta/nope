@@ -157,6 +157,33 @@ func TestHandlerReturnsBuildError(t *testing.T) {
 	}
 }
 
+func TestInvalidWildcardPatternDoesNotPanic(t *testing.T) {
+	s := New(":0")
+	s.GET("/files/*", func(ctx context.Context, r *http.Request) (any, error) {
+		return map[string]bool{"ok": true}, nil
+	})
+
+	_, err := s.Handler()
+	if err == nil {
+		t.Fatalf("expected build error for invalid wildcard pattern")
+	}
+}
+
+func TestWildcardConflictDoesNotPanic(t *testing.T) {
+	s := New(":0")
+	h := func(ctx context.Context, r *http.Request) (any, error) {
+		return map[string]bool{"ok": true}, nil
+	}
+
+	s.GET("/files/*path", h)
+	s.GET("/files/*rest", h)
+
+	_, err := s.Handler()
+	if err == nil {
+		t.Fatalf("expected build error for wildcard conflict")
+	}
+}
+
 func TestEnableHealth(t *testing.T) {
 	s := New(":0")
 	s.EnableHealth()

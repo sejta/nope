@@ -18,6 +18,7 @@ var (
 	errInvalidPath    = errors.New("server: path must start with /")
 	errInvalidPrefix  = errors.New("server: prefix must start with /")
 	errTrailingPrefix = errors.New("server: prefix must not end with /")
+	errInvalidRoute   = errors.New("server: invalid route registration")
 )
 
 // Middleware описывает HTTP middleware в формате net/http.
@@ -232,7 +233,23 @@ func (s *Server) handle(method, routePath string, h httpkit.Handler, local []Mid
 	if len(local) > 0 {
 		httpHandler = applyMiddleware(httpHandler, local)
 	}
-	s.r.Handle(method, routePath, httpHandler)
+	if err := s.safeHandle(method, routePath, httpHandler); err != nil {
+		s.setBuildErr(err)
+	}
+}
+
+func (s *Server) safeHandle(method, routePath string, h http.Handler) (err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			if recErr, ok := rec.(error); ok {
+				err = errors.Join(errInvalidRoute, recErr)
+				return
+			}
+			err = errInvalidRoute
+		}
+	}()
+	s.r.Handle(method, routePath, h)
+	return nil
 }
 
 func (s *Server) setBuildErr(err error) {

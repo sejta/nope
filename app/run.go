@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"os"
@@ -9,11 +10,16 @@ import (
 	"syscall"
 )
 
+var (
+	// ErrNilHandler возвращается, когда Run вызван с nil handler.
+	ErrNilHandler = errors.New("app: handler is nil")
+)
+
 // Run запускает HTTP-сервер и блокируется до остановки.
 // Сервер останавливается по отмене ctx или по SIGINT/SIGTERM.
 func Run(ctx context.Context, cfg Config, h http.Handler) error {
 	if h == nil {
-		panic("app: handler is nil")
+		return ErrNilHandler
 	}
 	cfg = withDefaults(cfg)
 

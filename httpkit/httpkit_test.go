@@ -3,6 +3,7 @@ package httpkit
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -137,4 +138,20 @@ func decodeJSON(t *testing.T, w *httptest.ResponseRecorder, dst any) {
 	if err := json.NewDecoder(w.Body).Decode(dst); err != nil {
 		t.Fatalf("не удалось декодировать JSON: %v", err)
 	}
+}
+
+func TestTryAdaptNilHandler(t *testing.T) {
+	_, err := TryAdapt(nil)
+	if !errors.Is(err, ErrNilHandler) {
+		t.Fatalf("ожидали ErrNilHandler, получили %v", err)
+	}
+}
+
+func TestAdaptNilHandlerPanics(t *testing.T) {
+	defer func() {
+		if rec := recover(); rec == nil {
+			t.Fatalf("ожидали panic")
+		}
+	}()
+	_ = Adapt(nil)
 }

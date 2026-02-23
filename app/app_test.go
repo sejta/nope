@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -154,4 +155,11 @@ func waitForHealth(addr string, timeout time.Duration) error {
 		time.Sleep(10 * time.Millisecond)
 	}
 	return context.DeadlineExceeded
+}
+
+func TestRunNilHandler(t *testing.T) {
+	err := Run(context.Background(), DefaultConfig(), nil)
+	if !errors.Is(err, ErrNilHandler) {
+		t.Fatalf("ожидали ErrNilHandler, получили %v", err)
+	}
 }

@@ -86,6 +86,7 @@ func(ctx context.Context, r *http.Request) (any, error)
 **API v0.1:**
 - `Handler`
 - `Adapt(h Handler) http.HandlerFunc`
+- `TryAdapt(h Handler) (http.HandlerFunc, error)`
 - typed‑results: `Created`, `NoContent`
 
 ---
