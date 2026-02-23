@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -166,6 +167,9 @@ func TestInvalidWildcardPatternDoesNotPanic(t *testing.T) {
 	_, err := s.Handler()
 	if err == nil {
 		t.Fatalf("expected build error for invalid wildcard pattern")
+	}
+	if !strings.Contains(err.Error(), "router: empty wildcard name") {
+		t.Fatalf("expected router panic reason in error, got %q", err.Error())
 	}
 }
 

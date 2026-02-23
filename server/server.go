@@ -241,15 +241,22 @@ func (s *Server) handle(method, routePath string, h httpkit.Handler, local []Mid
 func (s *Server) safeHandle(method, routePath string, h http.Handler) (err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			if recErr, ok := rec.(error); ok {
-				err = errors.Join(errInvalidRoute, recErr)
-				return
-			}
-			err = errInvalidRoute
+			err = errors.Join(errInvalidRoute, panicCauseErr(rec))
 		}
 	}()
 	s.r.Handle(method, routePath, h)
 	return nil
+}
+
+func panicCauseErr(rec any) error {
+	switch v := rec.(type) {
+	case error:
+		return v
+	case string:
+		return errors.New(v)
+	default:
+		return errors.New("panic")
+	}
 }
 
 func (s *Server) setBuildErr(err error) {
