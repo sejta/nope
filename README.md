@@ -44,6 +44,7 @@ nope существует, чтобы:
 ## Что внутри (v0.1)
 
 - `app` — запуск сервера, таймауты, graceful shutdown
+- `server` — фасад для быстрого старта (`New`, `Group`, `Use`, `Run`)
 - `router` — собственный простой роутер (static / :param / mount)
 - `httpkit` — handler contract + middleware
 - `errors` — единый error JSON контракт
@@ -75,6 +76,27 @@ func main() {
 	_ = app.Run(context.Background(), cfg, r)
 }
 ```
+
+---
+
+## Быстрый старт (фасад server)
+
+```go
+func main() {
+	srv := server.New(":8080")
+	srv.GET("/ping", pingHandler)
+
+	api := srv.Group("/api")
+	api.GET("/users", usersHandler)
+
+	srv.EnableHealth()
+
+	_ = srv.Run()
+}
+```
+
+`server` — это тонкий DX-слой поверх `router/httpkit/app`.
+Если нужен полный контроль, используйте низкоуровневый путь ниже.
 
 ---
 

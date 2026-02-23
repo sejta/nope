@@ -27,6 +27,9 @@ Breaking‑изменения, если когда‑то понадобятся
 ### app
 Bootstrap/runtime: запуск HTTP‑сервера, graceful shutdown, health, pprof, hooks.
 
+### server
+Фасад для быстрого старта: регистрация роутов, группы, middleware и запуск через `Run`.
+
 ### router
 Минимальный роутер: static, `:param`, `*path`, `Mount`, 404/405 + Allow.
 

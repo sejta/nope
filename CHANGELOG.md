@@ -2,6 +2,11 @@
 
 Все заметные изменения фиксируются здесь.
 
+## v1.6.0 — 2026-02-23
+- server: новый фасад для быстрого старта (`New`, `Group`, `Use`, `Run`)
+- tests/docs: покрытие фасада и quick start в README
+- examples: добавлен `examples/facade`
+
 ## v1.5.0 — 2026-02-07
 - middleware: optional CORS
 - tests/docs: CORS middleware
