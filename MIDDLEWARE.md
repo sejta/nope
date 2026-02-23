@@ -13,6 +13,9 @@
 4. `AccessLog`
 5. `TimeoutError` (optional)
 
+При стиле `h = middlewareX(h)` внешние middleware добавляются последними.
+Поэтому в коде порядок строк обычно обратный к списку выше.
+
 Почему так:
 - `Recover` должен быть самым внешним, чтобы перехватывать panic из любой части цепочки.
 - `RequestID` нужен как можно раньше, чтобы попасть в логи и контекст до других middleware.
@@ -76,9 +79,9 @@ r := router.New()
 r.GET("/ping", httpkit.Adapt(ping))
 
 h := http.Handler(r)
+h = middleware.TimeoutError(middleware.DefaultTimeoutError)(h)
+h = middleware.AccessLog(log.Default())(h)
 h = middleware.Timeout(5 * time.Second)(h)
 h = middleware.RequestID(h)
 h = middleware.Recover(h)
-h = middleware.AccessLog(log.Default())(h)
-h = middleware.TimeoutError(middleware.DefaultTimeoutError)(h)
 ```
