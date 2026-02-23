@@ -147,6 +147,9 @@ func (s *Server) Run() error {
 
 // RunContext запускает HTTP-сервер с указанным контекстом.
 func (s *Server) RunContext(ctx context.Context) error {
+	if err := s.Validate(); err != nil {
+		return err
+	}
 	h, err := s.Handler()
 	if err != nil {
 		return err
@@ -156,6 +159,12 @@ func (s *Server) RunContext(ctx context.Context) error {
 		cfg.Addr = s.addr
 	}
 	return app.Run(ctx, cfg, h)
+}
+
+// Validate проверяет конфигурацию фасада до запуска.
+func (s *Server) Validate() error {
+	_, err := s.Handler()
+	return err
 }
 
 // Handler собирает итоговый http.Handler с учётом middleware и app-обёрток.

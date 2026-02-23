@@ -221,3 +221,29 @@ func TestPresetDefaultAddsRequestID(t *testing.T) {
 		t.Fatalf("missing request id header")
 	}
 }
+
+func TestValidateOK(t *testing.T) {
+	s := New(":0")
+	s.GET("/ping", func(ctx context.Context, r *http.Request) (any, error) {
+		return map[string]bool{"pong": true}, nil
+	})
+
+	if err := s.Validate(); err != nil {
+		t.Fatalf("expected valid config, got %v", err)
+	}
+}
+
+func TestValidateReturnsBuildError(t *testing.T) {
+	s := New(":0")
+	s.GET("/files/*", func(ctx context.Context, r *http.Request) (any, error) {
+		return map[string]bool{"ok": true}, nil
+	})
+
+	err := s.Validate()
+	if err == nil {
+		t.Fatalf("expected build error")
+	}
+	if !strings.Contains(err.Error(), "router: empty wildcard name") {
+		t.Fatalf("expected router panic reason in error, got %q", err.Error())
+	}
+}

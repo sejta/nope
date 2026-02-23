@@ -90,6 +90,9 @@ func main() {
 	api.GET("/users", usersHandler)
 
 	srv.EnableHealth()
+	if err := srv.Validate(); err != nil {
+		return
+	}
 
 	_ = srv.Run()
 }
