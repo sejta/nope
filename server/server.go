@@ -19,6 +19,7 @@ var (
 	errInvalidPrefix  = errors.New("server: prefix must start with /")
 	errTrailingPrefix = errors.New("server: prefix must not end with /")
 	errInvalidRoute   = errors.New("server: invalid route registration")
+	errInvalidCORS    = errors.New("server: invalid cors options")
 )
 
 // Middleware описывает HTTP middleware в формате net/http.
@@ -105,6 +106,16 @@ func (s *Server) EnableHealth() {
 // EnablePprof включает маршруты /debug/pprof/*.
 func (s *Server) EnablePprof() {
 	s.enablePprofRoute = true
+}
+
+// EnableCORS добавляет глобальный CORS middleware с указанной политикой.
+func (s *Server) EnableCORS(opts middleware.CORSOptions) {
+	mw, err := buildCORSMiddleware(opts)
+	if err != nil {
+		s.setBuildErr(err)
+		return
+	}
+	s.Use(mw)
 }
 
 // Group создаёт группу роутов с общим prefix.
@@ -291,6 +302,16 @@ func applyMiddleware(h http.Handler, mws []Middleware) http.Handler {
 		h = mws[i](h)
 	}
 	return h
+}
+
+func buildCORSMiddleware(opts middleware.CORSOptions) (mw Middleware, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			mw = nil
+			err = errors.Join(errInvalidCORS, panicCauseErr(rec))
+		}
+	}()
+	return middleware.CORS(opts), nil
 }
 
 func validatePrefix(prefix string) error {

@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/sejta/nope/httpkit/middleware"
 )
 
 func TestServerGETAndJSON(t *testing.T) {
@@ -219,6 +221,46 @@ func TestPresetDefaultAddsRequestID(t *testing.T) {
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/ping", nil))
 	if rr.Header().Get("X-Request-Id") == "" {
 		t.Fatalf("missing request id header")
+	}
+}
+
+func TestEnableCORSAddsHeadersForAllowedOrigin(t *testing.T) {
+	s := New(":0")
+	s.EnableCORS(middleware.CORSOptions{
+		AllowedOrigins: []string{"https://app.example"},
+	})
+	s.GET("/ping", func(ctx context.Context, r *http.Request) (any, error) {
+		return map[string]bool{"pong": true}, nil
+	})
+
+	h, err := s.Handler()
+	if err != nil {
+		t.Fatalf("handler build failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
+	req.Header.Set("Origin", "https://app.example")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Header().Get("Access-Control-Allow-Origin") != "https://app.example" {
+		t.Fatalf("missing allow origin header")
+	}
+}
+
+func TestEnableCORSInvalidOptionsSetBuildError(t *testing.T) {
+	s := New(":0")
+	s.EnableCORS(middleware.CORSOptions{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+	})
+
+	err := s.Validate()
+	if err == nil {
+		t.Fatalf("expected build error")
+	}
+	if !strings.Contains(err.Error(), "server: invalid cors options") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

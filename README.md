@@ -336,6 +336,17 @@ _ = err
 
 Опциональный CORS middleware — см. `CORS.md`.
 
+Через фасад `server` можно подключить CORS одной строкой:
+
+```go
+srv := server.NewWithPreset(":8080", server.PresetDefault)
+srv.EnableCORS(middleware.CORSOptions{
+	AllowedOrigins: []string{"https://app.example"},
+})
+```
+
+Важно: wildcard origin (`*`) нельзя комбинировать с `AllowCredentials=true`.
+
 ---
 
 ## Зоны (`/api`, `/admin`)
